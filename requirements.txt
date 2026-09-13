@@ -5,6 +5,7 @@ pydantic
 
 # Database
 asyncpg
+redis
 
 # Config
 python-dotenv
