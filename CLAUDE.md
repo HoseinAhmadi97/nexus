@@ -64,6 +64,38 @@ contracts (a keyspace convention and a table schema), not its code.
    coordination point between the two projects' CLAUDE.md files, not a
    code dependency.
 
+7. **`app/services/gold_market.py` and `gold_funds.py` are composed
+   business logic, not providers.** They replace a legacy pipeline
+   (`gold_1.py`/`gold_2.py`) whose own ClickHouse/SQL backends no
+   longer exist on this server, sourced instead from what's actually
+   available (confirmed symbol-by-symbol with the user, 2026-09-13 --
+   see README "Gold market and gold funds"). Don't route these through
+   `PriceProvider`: `SYMBOL_SOURCES` in `gold_market.py` deliberately
+   picks a specific `(source, isin)` per instrument (the opposite of
+   `/v1/prices/{isin}`'s "return every source" rule) precisely because
+   this endpoint's whole point is composing one coherent answer, and
+   `gold_funds.py` reads `market_fetcher`'s Redis key and
+   `quant_db.live.last_month_gold_compos` directly -- neither fits the
+   isin/price shape `PriceProvider` was built for.
+
+8. **`gold_funds.py` depends on `market_fetcher` (`~/market_fetcher`, a
+   separate, older project) actually running.** Its `all_tickers_info`
+   Redis key has no TTL (same convention Atlas uses, for the same
+   reason), so if that service stops, `/v1/gold/funds` doesn't error --
+   it silently keeps serving an increasingly stale snapshot. There is
+   no staleness check on this yet; don't assume the absence of an
+   error means the data is current.
+
+9. **The legacy pipeline's intrinsic/sekke/shemsh bubble decomposition
+   is deliberately not ported.** Only `nominal_bubble`
+   (`last_trade/nav_live - 1`) is computed in `gold_funds.py` -- the
+   fuller decomposition depends on unit assumptions (a "mesghal" price
+   Atlas has no equivalent for, a specific dollar-rate convention) that
+   haven't been validated against the new datasources. Don't add it
+   back without validating those assumptions first; a wrong unit
+   conversion silently producing plausible-looking numbers is exactly
+   the bug class `tabdeal_fetcher.py` had (Atlas invariant 15).
+
 ## Conventions
 
 - `from __future__ import annotations` throughout, matching Atlas's

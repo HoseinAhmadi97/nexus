@@ -71,6 +71,42 @@ data." See `docs/architecture.md` for the merge logic.
 - `GET /health` -- liveness check.
 - `GET /docs` -- FastAPI's interactive Swagger UI (auto-generated).
 
+### Gold market and gold funds
+
+Two composed endpoints (`app/services/gold_market.py`,
+`app/services/gold_funds.py`) replace a legacy pipeline (`gold_1.py` +
+`gold_2.py`, previously run against a ClickHouse "mabna" feed and a ---
+server that no longer exists) with the same two output tables, sourced
+from what's actually available now:
+
+- `GET /v1/gold/market` -- one row per instrument (`ons`, `geram18`,
+  `geram24`, `sekee`, `govahi_sekke`, `govahi_shemsh`, `dollar`), each
+  from a specific confirmed Atlas `(source, isin)` -- see
+  `SYMBOL_SOURCES` in `gold_market.py`. `dollar` is an average of
+  `wallex`'s USDTTMN and `tabdeal`'s dollar (two different instruments
+  used as a proxy pair, not an exact match); both raw values are in
+  `components` so nothing is hidden. `mesghal` has no current Atlas
+  equivalent and is left out, not guessed at.
+- `GET /v1/gold/funds` -- the 31 gold funds: live trade/order-book data
+  (`last_trade`, `ask_price_1`, `bid_price_1`, `value`, `volume`, `nav`)
+  from `market_fetcher`'s `all_tickers_info` Redis key (parsed by hand
+  -- it's a `pandas.DataFrame.to_json()` blob, and Nexus doesn't
+  otherwise depend on pandas), joined with NAV from Atlas's `tadbir`
+  and `farabi` providers and this month's portfolio weights from
+  `quant_db`'s `live.last_month_gold_compos` (a cross-project table,
+  same pattern as `AtlasProvider` reading Atlas's own data). Only
+  `nominal_bubble` (`last_trade/nav_live - 1`) is computed -- the
+  legacy pipeline's intrinsic/sekke/shemsh bubble decomposition is
+  deliberately not ported: it depends on unit assumptions (a "mesghal"
+  price, a specific dollar rate) not yet validated against the new
+  datasources.
+
+`market_fetcher` (a separate, older project, `~/market_fetcher` on the
+server) must be running for `/v1/gold/funds` to have live data --
+`all_tickers_info` has no TTL, so if that service stops, this endpoint
+silently starts serving an increasingly stale snapshot rather than
+erroring. There is no staleness check on this yet.
+
 ## Quickstart
 
 ```bash
