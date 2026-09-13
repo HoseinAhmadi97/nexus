@@ -1,0 +1,15 @@
+[Unit]
+Description=Nexus API layer
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=quant
+WorkingDirectory=/home/quant/nexus
+EnvironmentFile=/home/quant/nexus/.env
+ExecStart=/opt/quant/envs/quant/bin/python -m uvicorn app.main:app --host ${NEXUS_HOST} --port ${NEXUS_PORT}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
