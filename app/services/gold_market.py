@@ -6,6 +6,7 @@ import asyncpg
 
 from app.providers.atlas_provider import AtlasProvider
 from app.schemas import GoldMarketRow
+from app.services.gold_intrinsic import apply_certificate_intrinsics
 
 # name -> (source, isin) in Atlas. Confirmed with the user which source
 # is authoritative per instrument (2026-09-13, replacing a legacy
@@ -168,4 +169,5 @@ async def build_gold_market_table(
                 change_pct=change_pct,
             )
         )
+    apply_certificate_intrinsics(rows)
     return rows

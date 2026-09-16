@@ -48,6 +48,12 @@ class GoldMarketRow(BaseModel):
     change: float | None = None
     #: A fraction, not a percentage: 0.011 means +1.1%.
     change_pct: float | None = None
+    #: Deposit certificates only (govahi_sekke, govahi_shemsh), see
+    #: services/gold_intrinsic.py: intrinsic value in the row's own unit,
+    #: bubble = price / intrinsic - 1, implied dollar (IRT) = dollar x (1 + bubble).
+    intrinsic: float | None = None
+    bubble: float | None = None
+    implied_dollar: float | None = None
 
 
 class GoldFundRow(BaseModel):
@@ -75,6 +81,11 @@ class GoldFundRow(BaseModel):
     #: The NAV of record: farabi's. What consumers should show and what
     #: nominal_bubble uses; nav_live and nav_tadbir are for comparison.
     nav: float | None = None
+    #: coin weight x coin-certificate bubble + bar weight x bar-certificate
+    #: bubble (services/gold_intrinsic.py). None without weights.
+    intrinsic_bubble: float | None = None
+    #: dollar x (1 + intrinsic_bubble), IRT.
+    implied_dollar: float | None = None
     #: This month's portfolio composition weights (sekke/shemsh/cash/...)
     #: from live.last_month_gold_compos, if this fund has a row there.
     weights: dict[str, float] | None

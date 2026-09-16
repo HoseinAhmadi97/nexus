@@ -106,7 +106,7 @@ async def build_gold_snapshot(
     """
     now = dt.datetime.now(TEHRAN)
     market = await build_gold_market_table(atlas_provider, pg_pool)
-    funds = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+    funds = await build_gold_funds_table(redis_client, pg_pool, atlas_provider, market)
 
     series: dict[str, GoldSeries] = {}
     geram18 = await _read_series(pg_pool, _ATLAS_LAST_DAY_SQL, "estjt", "geram18")

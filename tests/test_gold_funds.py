@@ -66,7 +66,7 @@ async def test_build_gold_funds_table_filters_to_gold_funds_only():
         PricePoint(isin="IRTKMOFD0001", source="farabi", price=636200.0, updated_at=NOW, payload={}),
     ]
 
-    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider, market_rows=[])
 
     assert len(rows) == 1  # "not-a-gold-fund" row excluded
     row = rows[0]
@@ -96,7 +96,7 @@ async def test_nominal_bubble_uses_the_farabi_nav():
         PricePoint(isin="IRTKMOFD0001", source="farabi", price=636200.0, updated_at=NOW, payload={}),
     ]
 
-    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider, market_rows=[])
 
     row = rows[0]
     assert row.nav == 636200.0
@@ -116,7 +116,7 @@ async def test_no_farabi_nav_means_no_bubble_rather_than_another_source():
         PricePoint(isin="IRTKMOFD0001", source="tadbir", price=636000.0, updated_at=NOW, payload={}),
     ]
 
-    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider, market_rows=[])
 
     assert rows[0].nav is None
     assert rows[0].nominal_bubble is None
@@ -138,7 +138,7 @@ async def test_weights_matched_through_compos_fund_name_alias():
     atlas_provider = AsyncMock()
     atlas_provider.latest_for.return_value = []
 
-    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider, market_rows=[])
 
     assert rows[0].symbol == "رز ترنج"
     assert rows[0].weights["sekke_weight"] == 0.2
@@ -153,6 +153,6 @@ async def test_missing_redis_key_returns_empty_list_not_error():
     atlas_provider = AsyncMock()
     atlas_provider.latest_for.return_value = []
 
-    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider, market_rows=[])
 
     assert rows == []

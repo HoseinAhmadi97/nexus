@@ -86,7 +86,8 @@ contracts (a keyspace convention and a table schema), not its code.
    no staleness check on this yet; don't assume the absence of an
    error means the data is current.
 
-9. **The legacy pipeline's intrinsic/sekke/shemsh bubble decomposition
+9. **Intrinsic value is a simplified port of the legacy pipeline** (see
+   16 below). The rest of the legacy intrinsic/sekke/shemsh bubble decomposition
    is deliberately not ported.** Only `nominal_bubble`
    (`last_trade/nav - 1`, `nav` = farabi, see 15) is computed in `gold_funds.py` -- the
    fuller decomposition depends on unit assumptions (a "mesghal" price
@@ -139,6 +140,16 @@ contracts (a keyspace convention and a table schema), not its code.
     Saturday-Wednesday 12:00-18:00 Tehran (`fund_market_open()` in
     `gold_snapshot.py`, given by the user 2026-09-16). Holidays are not
     known to Nexus.
+
+17. **Certificate intrinsic value, fund intrinsic bubble and implied dollar
+    live in `services/gold_intrinsic.py`**, ported from the legacy
+    `calculute_bubble()` (gold_2.py) and simplified with the user on
+    2026-09-16: one dollar (the market table's `dollar`), only the coin and bar
+    certificates are valued, fund intrinsic bubble = coin weight x coin-cert
+    bubble + bar weight x bar-cert bubble, implied dollar = dollar x (1 +
+    bubble). The constants (9.5742, 4.6083, 705/750, 4.2492, /10) are the
+    legacy ones -- don't change them without the user. Consumers show these
+    numbers; they don't recompute them.
 
 ## Conventions
 

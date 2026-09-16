@@ -7,7 +7,8 @@ import asyncpg
 import redis.asyncio as redis
 
 from app.providers.atlas_provider import AtlasProvider
-from app.schemas import GoldFundRow
+from app.schemas import GoldFundRow, GoldMarketRow
+from app.services.gold_intrinsic import BAR_CERT, COIN_CERT, fund_intrinsic
 
 # Same 31 gold-fund TSE numeric ids the legacy gold_2.py pipeline used
 # to filter market_fetcher's all_tickers_info (a DIFFERENT id system
@@ -85,6 +86,7 @@ async def build_gold_funds_table(
     redis_client: redis.Redis,
     pg_pool: asyncpg.Pool,
     atlas_provider: AtlasProvider,
+    market_rows: list[GoldMarketRow] | None = None,
 ) -> list[GoldFundRow]:
     """The gold funds snapshot: live trade/order-book data (from
     market_fetcher's all_tickers_info, the only source of that data --
@@ -109,6 +111,18 @@ async def build_gold_funds_table(
     farabi_by_isin = {p.isin: p for p in nav_points if p.source == "farabi"}
     weights_by_fund = await _read_weights(pg_pool)
 
+    # the certificate bubbles and the dollar come from the market table;
+    # the snapshot passes the one it already built
+    if market_rows is None:
+        from app.services.gold_market import build_gold_market_table
+        market_rows = await build_gold_market_table(atlas_provider, pg_pool)
+    by_symbol = {r.symbol: r for r in market_rows}
+    cert_bubbles = {
+        s: by_symbol[s].bubble for s in (COIN_CERT, BAR_CERT)
+        if s in by_symbol and by_symbol[s].bubble is not None
+    }
+    dollar = by_symbol["dollar"].price if "dollar" in by_symbol else None
+
     rows = []
     for t in fund_tickers:
         isin = t.get("isin")
@@ -129,6 +143,9 @@ async def build_gold_funds_table(
         yesterday = t.get("yesterday_price")
         change = last_trade - yesterday if last_trade and yesterday else None
         change_pct = last_trade / yesterday - 1 if last_trade and yesterday else None
+
+        weights = weights_by_fund.get(_COMPOS_FUND_NAME.get(symbol, symbol))
+        intrinsic_bubble, implied_dollar = fund_intrinsic(weights, cert_bubbles, dollar)
 
         rows.append(
             GoldFundRow(
@@ -151,7 +168,9 @@ async def build_gold_funds_table(
                 nav_tadbir=tadbir_point.price if tadbir_point else None,
                 nav_farabi=nav,
                 nominal_bubble=nominal_bubble,
-                weights=weights_by_fund.get(_COMPOS_FUND_NAME.get(symbol, symbol)),
+                weights=weights,
+                intrinsic_bubble=intrinsic_bubble,
+                implied_dollar=implied_dollar,
             )
         )
     return rows
