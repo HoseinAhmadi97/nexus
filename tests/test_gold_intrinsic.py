@@ -80,19 +80,20 @@ def test_coins_mesghal_and_fractions_are_valued_in_their_own_unit():
         assert r.implied_dollar == pytest.approx(230100.0 * (1 + r.bubble))
 
 
-def test_fund_intrinsic_bubble_is_the_weighted_certificate_bubbles():
+def test_fund_intrinsic_bubble_is_nominal_plus_weighted_certificate_bubbles():
     bubbles = {"govahi_sekke": -0.02, "govahi_shemsh": -0.04}
     weights = {"sekke_weight": 0.1, "shemsh_weight": 0.85, "cash_weight": 0.05}
 
-    bubble, implied = fund_intrinsic(weights, bubbles, 230000.0)
+    bubble, implied = fund_intrinsic(weights, bubbles, 230000.0, 0.015)
 
-    assert bubble == pytest.approx(0.1 * -0.02 + 0.85 * -0.04)
+    assert bubble == pytest.approx(0.015 + 0.1 * -0.02 + 0.85 * -0.04)
     assert implied == pytest.approx(230000.0 * (1 + bubble))
 
 
 def test_fund_without_weights_or_needed_bubble_gets_none():
-    assert fund_intrinsic(None, {"govahi_sekke": 0.0, "govahi_shemsh": 0.0}, 230000.0) == (None, None)
-    assert fund_intrinsic({"sekke_weight": 0.2, "shemsh_weight": 0.8}, {"govahi_shemsh": -0.01}, 230000.0) == (None, None)
+    assert fund_intrinsic(None, {"govahi_sekke": 0.0, "govahi_shemsh": 0.0}, 230000.0, 0.0) == (None, None)
+    assert fund_intrinsic({"sekke_weight": 0.2, "shemsh_weight": 0.8}, {"govahi_shemsh": -0.01}, 230000.0, 0.0) == (None, None)
+    assert fund_intrinsic({"sekke_weight": 0.0, "shemsh_weight": 1.0}, {"govahi_shemsh": -0.01}, 230000.0, None) == (None, None)
     # a pure-bar fund doesn't need the coin bubble
-    b, _ = fund_intrinsic({"sekke_weight": 0.0, "shemsh_weight": 1.0}, {"govahi_shemsh": -0.01}, 230000.0)
+    b, _ = fund_intrinsic({"sekke_weight": 0.0, "shemsh_weight": 1.0}, {"govahi_shemsh": -0.01}, 230000.0, 0.0)
     assert b == pytest.approx(-0.01)

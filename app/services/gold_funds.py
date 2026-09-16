@@ -145,7 +145,7 @@ async def build_gold_funds_table(
         change_pct = last_trade / yesterday - 1 if last_trade and yesterday else None
 
         weights = weights_by_fund.get(_COMPOS_FUND_NAME.get(symbol, symbol))
-        intrinsic_bubble, implied_dollar = fund_intrinsic(weights, cert_bubbles, dollar)
+        intrinsic_bubble, implied_dollar = fund_intrinsic(weights, cert_bubbles, dollar, nominal_bubble)
 
         rows.append(
             GoldFundRow(

@@ -145,7 +145,7 @@ contracts (a keyspace convention and a table schema), not its code.
     live in `services/gold_intrinsic.py`**, ported from the legacy
     `calculute_bubble()` (gold_2.py) and simplified with the user on
     2026-09-16: one dollar (the market table's `dollar`), only the coin and bar
-    certificates are valued, fund intrinsic bubble = coin weight x coin-cert
+    certificates are valued, fund intrinsic bubble = nominal bubble + coin weight x coin-cert
     bubble + bar weight x bar-cert bubble, implied dollar = dollar x (1 +
     bubble). The constants (9.5742, 4.6083, 705/750, 4.2492, /10) are the
     legacy ones -- don't change them without the user. Consumers show these

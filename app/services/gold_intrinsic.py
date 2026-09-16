@@ -19,9 +19,10 @@ gold (8.133 g at 900 fineness per full coin):
     Bahar Azadi coin = Emami coin;  half coin = Emami / 2;  quarter coin = Emami / 4
 
 Per instrument: bubble = price / intrinsic - 1, implied dollar (IRT) = dollar x
-(1 + bubble). Per fund: intrinsic bubble = coin weight x coin-cert bubble + bar
-weight x bar-cert bubble (cash and other holdings contribute nothing), implied
-dollar = dollar x (1 + that).
+(1 + bubble). Per fund (legacy `bubble` column): intrinsic bubble = nominal bubble
+(last trade / NAV - 1) + coin weight x coin-cert bubble + bar weight x bar-cert
+bubble (cash and other holdings contribute nothing), implied dollar = dollar x
+(1 + that).
 
 The legacy cross-fund coin/bar bubble decomposition and its several dollars are
 intentionally not ported.
@@ -96,14 +97,16 @@ def fund_intrinsic(
     weights: dict[str, float] | None,
     cert_bubbles: dict[str, float],
     dollar_irt: float | None,
+    nominal_bubble: float | None,
 ) -> tuple[float | None, float | None]:
-    """(intrinsic bubble, implied dollar in IRT) for one fund. None when the
-    fund has no weights or a certificate it holds has no bubble."""
-    if not weights or not dollar_irt:
+    """(intrinsic bubble, implied dollar in IRT) for one fund: the fund's own
+    premium over NAV plus the premium of the certificates inside that NAV.
+    None without weights, a nominal bubble, or a needed certificate bubble."""
+    if not weights or not dollar_irt or nominal_bubble is None:
         return None, None
     coin_w = weights.get("sekke_weight") or 0
     bar_w = weights.get("shemsh_weight") or 0
     if (coin_w and COIN_CERT not in cert_bubbles) or (bar_w and BAR_CERT not in cert_bubbles):
         return None, None
-    bubble = coin_w * cert_bubbles.get(COIN_CERT, 0) + bar_w * cert_bubbles.get(BAR_CERT, 0)
+    bubble = nominal_bubble + coin_w * cert_bubbles.get(COIN_CERT, 0) + bar_w * cert_bubbles.get(BAR_CERT, 0)
     return bubble, dollar_irt * (1 + bubble)
