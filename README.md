@@ -101,6 +101,45 @@ from what's actually available now:
   price, a specific dollar rate) not yet validated against the new
   datasources.
 
+Both tables also carry day change: market rows have `label`, `unit`
+(`IRR`, `IRT` = toman, or `USD` -- prices are never converted),
+`prev_close` (last `atlas.raw_ticks` value before Tehran midnight),
+`change` and `change_pct` (a fraction); fund rows have `name`,
+`close_price`, `yesterday_price`, `change`, `change_pct` (last trade vs
+TSE's previous-day price), `trade_time` and `market_cap`.
+
+- `GET /v1/gold/snapshot` -- everything the website's gold pages show,
+  in one document: `market`, `funds`, a `summary` (fund count, average /
+  max / min bubble, average day change, total traded value and market
+  cap, and `market_open` inferred from the latest trade's freshness), and
+  `series` -- two intraday lines for the most recent day with data:
+  `geram18` (estjt) and `nav` (tadbir NAV of the largest fund by market
+  cap). See "Website snapshot" below.
+
+### Website snapshot
+
+`/v1/gold/snapshot` is read by the public website, so it is built to cost
+the same for one visitor or thousands:
+
+- **Built on a timer, never per request.** `SnapshotCache`
+  (`app/snapshot_cache.py`) rebuilds it every `NEXUS_SNAPSHOT_REFRESH_SECONDS`
+  (default 10) in a background task started in `lifespan()`. A request
+  only returns bytes already in memory.
+- **Encoded once.** The JSON and its gzip are produced once per build;
+  the ETag is a hash of the body, so an unchanged poll gets a body-less
+  `304`. `Cache-Control: public, max-age=<interval/2>`.
+- **A failed build keeps the last good document**, whose `generated_at`
+  says how old it is.
+- **Targeted reads.** Both gold tables use `AtlasProvider.latest_for()`
+  -- one Redis `MGET` for the exact `(source, isin)` pairs they need,
+  Postgres only for pairs Redis lacks -- instead of `list_latest()`,
+  which scans all of `atlas.raw_ticks` (~0.7 s at 160k rows). A build
+  takes ~0.3 s. Previous closes (~0.15 s) are queried once per Tehran day.
+
+The site reaches it through nginx at `/api/gold/snapshot` with a 5 s
+micro-cache (the alef-capital repo's `deploy/nginx.conf`); nothing else
+of Nexus is exposed publicly.
+
 `market_fetcher` (a separate, older project, `~/market_fetcher` on the
 server) must be running for `/v1/gold/funds` to have live data --
 `all_tickers_info` has no TTL, so if that service stops, this endpoint

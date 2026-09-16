@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 
 import asyncpg
@@ -9,6 +11,8 @@ from fastapi import FastAPI
 from app.config import load_settings
 from app.providers import AtlasProvider
 from app.routers import gold, prices
+from app.services.gold_snapshot import build_gold_snapshot
+from app.snapshot_cache import SnapshotCache
 
 
 @asynccontextmanager
@@ -31,8 +35,19 @@ async def lifespan(app: FastAPI):
         "atlas": AtlasProvider(redis_client, pg_pool),
     }
 
+    # The website's gold snapshot is rebuilt on a timer, not per request,
+    # so visitor traffic never reaches Redis or Postgres.
+    app.state.gold_snapshot = SnapshotCache(
+        lambda: build_gold_snapshot(redis_client, pg_pool, app.state.providers["atlas"]),
+        interval=settings.snapshot_refresh_seconds,
+    )
+    snapshot_task = asyncio.create_task(app.state.gold_snapshot.run())
+
     yield
 
+    snapshot_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await snapshot_task
     await redis_client.aclose()
     await pg_pool.close()
 

@@ -96,6 +96,32 @@ contracts (a keyspace convention and a table schema), not its code.
    conversion silently producing plausible-looking numbers is exactly
    the bug class `tabdeal_fetcher.py` had (Atlas invariant 15).
 
+10. **`/v1/gold/snapshot` is never built inside a request.** It is
+    served from `app.state.gold_snapshot` (`SnapshotCache`), rebuilt by
+    a background task on a timer. The public website polls it; if a
+    change makes the endpoint compute anything per request, visitor
+    traffic starts reaching Redis and Postgres. Keep building in
+    `build_gold_snapshot()` and serving in the router separate.
+
+11. **Composed gold endpoints read Atlas with `latest_for()`, not
+    `list_latest()`.** They know exactly which `(source, isin)` pairs
+    they need; `list_latest()` with no source scans the whole of
+    `atlas.raw_ticks` every call and grows with the table. `latest_for()`
+    keeps invariant 3 (Redis first, Postgres only for pairs Redis
+    lacked). It is Atlas-specific, deliberately not on `PriceProvider`.
+
+12. **Prices keep their source's unit, labelled with `unit`.** estjt,
+    tabdeal and wallex are toman (`IRT`), IME and TSE funds are rial
+    (`IRR`; IME `GoldBar` is rial per 100 mg), the ounce is `USD`.
+    Nexus never converts; the consumer does, explicitly. A silent
+    rial/toman mix-up produces numbers that look plausible and are 10x
+    off.
+
+13. **Instruments added 2026-09-16 still need the user's confirmation:**
+    `sekee_bahar`, `nim`, `rob`, `gerami` (estjt) and `mesghal`
+    (tabdeal `gold_melt`, which tracks geram18 x 4.3318 within 0.3%).
+    The original six plus dollar were confirmed on 2026-09-13.
+
 ## Conventions
 
 - `from __future__ import annotations` throughout, matching Atlas's

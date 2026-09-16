@@ -37,6 +37,17 @@ class GoldMarketRow(BaseModel):
     #: (currently "dollar": wallex + tabdeal) -- the raw values behind
     #: the combined `price`, so nothing is hidden.
     components: list[dict[str, Any]] | None = None
+    #: Persian display name.
+    label: str | None = None
+    #: The native unit of `price`, never converted: "IRR", "IRT" (toman)
+    #: or "USD". See SOURCE_UNITS in gold_market.py.
+    unit: str | None = None
+    #: Last price before Tehran midnight, and the change against it.
+    #: None when no previous close exists in the last 10 days.
+    prev_close: float | None = None
+    change: float | None = None
+    #: A fraction, not a percentage: 0.011 means +1.1%.
+    change_pct: float | None = None
 
 
 class GoldFundRow(BaseModel):
@@ -45,6 +56,8 @@ class GoldFundRow(BaseModel):
 
     isin: str
     symbol: str
+    #: Full fund name from TSE.
+    name: str | None = None
     last_trade: float | None
     ask_price_1: float | None
     bid_price_1: float | None
@@ -62,3 +75,58 @@ class GoldFundRow(BaseModel):
     #: This month's portfolio composition weights (sekke/shemsh/cash/...)
     #: from live.last_month_gold_compos, if this fund has a row there.
     weights: dict[str, float] | None
+    #: TSE closing (weighted-average) price and previous-day reference
+    #: price. All fund prices are IRR.
+    close_price: float | None = None
+    yesterday_price: float | None = None
+    #: last_trade vs yesterday_price. change_pct is a fraction.
+    change: float | None = None
+    change_pct: float | None = None
+    #: Time of the last trade, "HH:MM:SS" Tehran time. TSE gives no date.
+    trade_time: str | None = None
+    market_cap: float | None = None
+
+
+class GoldSeriesPoint(BaseModel):
+    time: dt.datetime
+    value: float
+
+
+class GoldSeries(BaseModel):
+    """One intraday line: the most recent day that has data."""
+
+    key: str
+    label: str
+    unit: str
+    source: str
+    points: list[GoldSeriesPoint]
+
+
+class GoldSummary(BaseModel):
+    fund_count: int
+    #: Simple mean of nominal_bubble across funds that have one.
+    avg_bubble: float | None
+    #: {"symbol": ..., "bubble": ...} for the highest / lowest bubble.
+    max_bubble: dict[str, Any] | None
+    min_bubble: dict[str, Any] | None
+    #: Mean day change of the funds -- a stand-in until a real gold fund
+    #: index exists (none of the datasources has one).
+    avg_change_pct: float | None
+    #: Sums across the funds, IRR.
+    total_value: float
+    total_market_cap: float
+    #: Latest fund trade time, and whether it is recent enough (within 15
+    #: minutes of now, Tehran) to call the market open. An inference from
+    #: data freshness, not an official market status.
+    last_trade_time: str | None
+    market_open: bool
+
+
+class GoldSnapshot(BaseModel):
+    """Everything the website's gold pages show, in one document."""
+
+    generated_at: dt.datetime
+    summary: GoldSummary
+    market: list[GoldMarketRow]
+    funds: list[GoldFundRow]
+    series: dict[str, GoldSeries]

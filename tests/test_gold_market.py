@@ -29,7 +29,7 @@ ALL_POINTS = [
 @pytest.mark.asyncio
 async def test_builds_one_row_per_confirmed_symbol():
     provider = AsyncMock()
-    provider.list_latest.return_value = ALL_POINTS
+    provider.latest_for.return_value = ALL_POINTS
 
     rows = await build_gold_market_table(provider)
 
@@ -40,7 +40,7 @@ async def test_builds_one_row_per_confirmed_symbol():
 @pytest.mark.asyncio
 async def test_geram18_comes_from_estjt_specifically_not_tabdeal():
     provider = AsyncMock()
-    provider.list_latest.return_value = ALL_POINTS
+    provider.latest_for.return_value = ALL_POINTS
 
     rows = await build_gold_market_table(provider)
 
@@ -52,7 +52,7 @@ async def test_geram18_comes_from_estjt_specifically_not_tabdeal():
 @pytest.mark.asyncio
 async def test_dollar_is_averaged_across_wallex_and_tabdeal_with_components_shown():
     provider = AsyncMock()
-    provider.list_latest.return_value = ALL_POINTS
+    provider.latest_for.return_value = ALL_POINTS
 
     rows = await build_gold_market_table(provider)
 
@@ -65,7 +65,7 @@ async def test_dollar_is_averaged_across_wallex_and_tabdeal_with_components_show
 @pytest.mark.asyncio
 async def test_missing_instrument_is_skipped_not_errored():
     provider = AsyncMock()
-    provider.list_latest.return_value = [_point("ons_tala", "estjt", 4348.0)]
+    provider.latest_for.return_value = [_point("ons_tala", "estjt", 4348.0)]
 
     rows = await build_gold_market_table(provider)
 

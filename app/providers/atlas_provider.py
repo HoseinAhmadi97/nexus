@@ -46,6 +46,20 @@ ORDER BY isin, source, time DESC
 """
 
 
+# Postgres fallback for specific (source, isin) pairs Redis didn't have.
+# Filtering to the pairs up front keeps this off the whole-table scan
+# _PG_LIST_LATEST_SQL does.
+_PG_LATEST_FOR_PAIRS_SQL = """
+SELECT DISTINCT ON (source, isin)
+    isin, source, price,
+    received_at AT TIME ZONE 'Asia/Tehran' AS updated_at,
+    payload
+FROM atlas.raw_ticks
+WHERE (source, isin) IN (SELECT * FROM unnest($1::text[], $2::text[]))
+ORDER BY source, isin, time DESC
+"""
+
+
 def _point_from_redis_value(raw: str | bytes) -> PricePoint:
     data = json.loads(raw)
     return PricePoint(
@@ -99,6 +113,30 @@ class AtlasProvider(PriceProvider):
             _point_from_pg_row(r) for r in pg_rows if r["source"] not in found_sources
         ]
         return redis_points + fallback
+
+    async def latest_for(self, keys: list[tuple[str, str]]) -> list[PricePoint]:
+        """Latest point for each given (source, isin) pair.
+
+        The targeted read for composed endpoints that know exactly which
+        instruments they need: one Redis MGET instead of scanning every
+        key, and Postgres only for pairs Redis didn't have -- the same
+        Redis-first rule as latest()/list_latest(). list_latest() with no
+        source filter scans all of atlas.raw_ticks on every call (~0.7 s
+        at 160k rows, growing with the table), which a timer-driven
+        snapshot can't afford.
+        """
+        keys = list(dict.fromkeys(keys))
+        if not keys:
+            return []
+        raws = await self.redis.mget([f"{_REDIS_KEY_PREFIX}:{s}:{i}" for s, i in keys])
+        points = [_point_from_redis_value(raw) for raw in raws if raw is not None]
+        missing = [key for key, raw in zip(keys, raws) if raw is None]
+        if missing:
+            rows = await self.pg_pool.fetch(
+                _PG_LATEST_FOR_PAIRS_SQL, [s for s, _ in missing], [i for _, i in missing]
+            )
+            points.extend(_point_from_pg_row(r) for r in rows)
+        return points
 
     async def list_latest(self, source: str | None = None) -> list[PricePoint]:
         pattern = f"{_REDIS_KEY_PREFIX}:{source}:*" if source else f"{_REDIS_KEY_PREFIX}:*"

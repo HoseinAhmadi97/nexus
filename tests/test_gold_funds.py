@@ -61,9 +61,9 @@ async def test_build_gold_funds_table_filters_to_gold_funds_only():
     ]
 
     atlas_provider = AsyncMock()
-    atlas_provider.list_latest.side_effect = [
-        [PricePoint(isin="IRTKMOFD0001", source="tadbir", price=636000.0, updated_at=NOW, payload={})],
-        [PricePoint(isin="IRTKMOFD0001", source="farabi", price=636200.0, updated_at=NOW, payload={})],
+    atlas_provider.latest_for.return_value = [
+        PricePoint(isin="IRTKMOFD0001", source="tadbir", price=636000.0, updated_at=NOW, payload={}),
+        PricePoint(isin="IRTKMOFD0001", source="farabi", price=636200.0, updated_at=NOW, payload={}),
     ]
 
     rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
@@ -91,7 +91,7 @@ async def test_nominal_bubble_computed_from_live_last_trade_and_nav():
     pg_pool = AsyncMock()
     pg_pool.fetch.return_value = []
     atlas_provider = AsyncMock()
-    atlas_provider.list_latest.return_value = []
+    atlas_provider.latest_for.return_value = []
 
     rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
 
@@ -114,7 +114,7 @@ async def test_weights_matched_through_compos_fund_name_alias():
         FakeRecord(fund="رز", sekke=0.2, shemsh=0.7, naghd=0.1, noghre=0.0, ayandeh=0.0),
     ]
     atlas_provider = AsyncMock()
-    atlas_provider.list_latest.return_value = []
+    atlas_provider.latest_for.return_value = []
 
     rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
 
@@ -129,7 +129,7 @@ async def test_missing_redis_key_returns_empty_list_not_error():
     pg_pool = AsyncMock()
     pg_pool.fetch.return_value = []
     atlas_provider = AsyncMock()
-    atlas_provider.list_latest.return_value = []
+    atlas_provider.latest_for.return_value = []
 
     rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
 

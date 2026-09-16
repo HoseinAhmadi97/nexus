@@ -72,6 +72,15 @@ async def _read_weights(pg_pool: asyncpg.Pool) -> dict[str, dict[str, float]]:
     }
 
 
+def _trade_time(value: Any) -> str | None:
+    """market_fetcher stores the last trade time as an HHMMSS integer
+    (e.g. 143921 for 14:39:21), with no date."""
+    if value is None:
+        return None
+    text = str(int(value)).zfill(6)
+    return f"{text[0:2]}:{text[2:4]}:{text[4:6]}"
+
+
 async def build_gold_funds_table(
     redis_client: redis.Redis,
     pg_pool: asyncpg.Pool,
@@ -92,8 +101,12 @@ async def build_gold_funds_table(
     tickers = _tickers_from_pandas_json(raw) if raw else []
     fund_tickers = [t for t in tickers if str(t.get("id")) in GOLD_FUND_TSE_IDS]
 
-    tadbir_by_isin = {p.isin: p for p in await atlas_provider.list_latest(source="tadbir")}
-    farabi_by_isin = {p.isin: p for p in await atlas_provider.list_latest(source="farabi")}
+    isins = [t.get("isin") for t in fund_tickers if t.get("isin")]
+    nav_points = await atlas_provider.latest_for(
+        [(source, isin) for source in ("tadbir", "farabi") for isin in isins]
+    )
+    tadbir_by_isin = {p.isin: p for p in nav_points if p.source == "tadbir"}
+    farabi_by_isin = {p.isin: p for p in nav_points if p.source == "farabi"}
     weights_by_fund = await _read_weights(pg_pool)
 
     rows = []
@@ -108,12 +121,24 @@ async def build_gold_funds_table(
         nominal_bubble = (
             (last_trade / nav_live) - 1 if last_trade and nav_live else None
         )
+        # Day change is measured on the last trade, against TSE's own
+        # previous-day reference price -- the same pair TSE's site uses.
+        yesterday = t.get("yesterday_price")
+        change = last_trade - yesterday if last_trade and yesterday else None
+        change_pct = last_trade / yesterday - 1 if last_trade and yesterday else None
 
         rows.append(
             GoldFundRow(
                 isin=isin,
                 symbol=symbol,
+                name=t.get("name"),
                 last_trade=last_trade,
+                close_price=t.get("close_price"),
+                yesterday_price=yesterday,
+                change=change,
+                change_pct=change_pct,
+                trade_time=_trade_time(t.get("time")),
+                market_cap=t.get("market_cap"),
                 ask_price_1=t.get("ask_price_1"),
                 bid_price_1=t.get("bid_price_1"),
                 value=t.get("value"),
