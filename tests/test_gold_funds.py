@@ -101,6 +101,28 @@ async def test_nominal_bubble_computed_from_live_last_trade_and_nav():
 
 
 @pytest.mark.asyncio
+async def test_weights_matched_through_compos_fund_name_alias():
+    # market_fetcher calls this fund "رز ترنج"; live.last_month_gold_compos
+    # calls it "رز". "رزگلد" is a different fund and must not match.
+    tickers = json.loads(ALL_TICKERS_JSON)
+    tickers["symbol"]["0"] = "رز ترنج"
+    redis_client = AsyncMock()
+    redis_client.get.return_value = json.dumps(tickers)
+    pg_pool = AsyncMock()
+    pg_pool.fetch.return_value = [
+        FakeRecord(fund="رزگلد", sekke=0.5, shemsh=0.5, naghd=0.0, noghre=0.0, ayandeh=0.0),
+        FakeRecord(fund="رز", sekke=0.2, shemsh=0.7, naghd=0.1, noghre=0.0, ayandeh=0.0),
+    ]
+    atlas_provider = AsyncMock()
+    atlas_provider.list_latest.return_value = []
+
+    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+
+    assert rows[0].symbol == "رز ترنج"
+    assert rows[0].weights["sekke_weight"] == 0.2
+
+
+@pytest.mark.asyncio
 async def test_missing_redis_key_returns_empty_list_not_error():
     redis_client = AsyncMock()
     redis_client.get.return_value = None

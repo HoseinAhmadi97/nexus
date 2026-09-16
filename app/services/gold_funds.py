@@ -30,6 +30,16 @@ GOLD_FUND_TSE_IDS = frozenset(
     }
 )
 
+# market_fetcher's TSE symbol -> the `fund` name
+# live.last_month_gold_compos uses, for funds the two spell differently
+# (the compos table drops the second word). Everything else matches by
+# symbol as-is. Explicit, not prefix-matched: "رز" is also a prefix of
+# "رزگلد", a different fund in the same table.
+_COMPOS_FUND_NAME = {
+    "رز ترنج": "رز",
+    "جام طلا": "جام",
+}
+
 _WEIGHTS_SQL = """
 SELECT fund, sekke, shemsh, naghd, noghre, ayandeh
 FROM live.last_month_gold_compos
@@ -112,7 +122,7 @@ async def build_gold_funds_table(
                 nav_tadbir=tadbir_point.price if tadbir_point else None,
                 nav_farabi=farabi_point.price if farabi_point else None,
                 nominal_bubble=nominal_bubble,
-                weights=weights_by_fund.get(symbol),
+                weights=weights_by_fund.get(_COMPOS_FUND_NAME.get(symbol, symbol)),
             )
         )
     return rows
