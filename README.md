@@ -94,8 +94,10 @@ from what's actually available now:
   otherwise depend on pandas), joined with NAV from Atlas's `tadbir`
   and `farabi` providers and this month's portfolio weights from
   `quant_db`'s `live.last_month_gold_compos` (a cross-project table,
-  same pattern as `AtlasProvider` reading Atlas's own data). Only
-  `nominal_bubble` (`last_trade/nav_live - 1`) is computed -- the
+  same pattern as `AtlasProvider` reading Atlas's own data). `nav` is
+  farabi's NAV, the NAV of record (`nav_live` and `nav_tadbir` are kept
+  for comparison). Only `nominal_bubble` (`last_trade/nav - 1`) is
+  computed -- the
   legacy pipeline's intrinsic/sekke/shemsh bubble decomposition is
   deliberately not ported: it depends on unit assumptions (a "mesghal"
   price, a specific dollar rate) not yet validated against the new
@@ -111,11 +113,11 @@ TSE's previous-day price), `trade_time` and `market_cap`.
 - `GET /v1/gold/snapshot` -- everything the website's gold pages show,
   in one document: `market`, `funds`, a `summary` (fund count, average /
   max / min bubble, average day change, total traded value and market
-  cap, and `market_open` inferred from the latest trade's freshness), and
-  `series` -- two intraday lines for the most recent day with data:
-  `geram18` (estjt) and `nav` (tadbir NAV of the largest fund by market
-  cap). See "Website snapshot" below.
-- `GET /v1/gold/nav-trend` -- every gold fund's intraday NAV (tadbir) for
+  cap, and `market_open` by schedule: Saturday-Wednesday 12:00-18:00
+  Tehran), and `series` -- two intraday lines for the most recent day
+  with data: `geram18` (estjt) and `nav` (farabi NAV of the largest fund
+  by market cap). See "Website snapshot" below.
+- `GET /v1/gold/nav-trend` -- every gold fund's intraday NAV (farabi) for
   the most recent day with data, on one shared 5-minute grid (`times`),
   largest fund first; each fund has `nav` per bucket (carried forward,
   `null` before its first NAV), `first`, `last`, `prev_close` (last NAV of

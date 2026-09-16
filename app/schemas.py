@@ -70,8 +70,11 @@ class GoldFundRow(BaseModel):
     #: dashboard's NAV divergence panel for the same comparison).
     nav_tadbir: float | None
     nav_farabi: float | None
-    #: (last_trade / nav_live) - 1. None if either input is missing.
+    #: (last_trade / nav) - 1. None if either input is missing.
     nominal_bubble: float | None
+    #: The NAV of record: farabi's. What consumers should show and what
+    #: nominal_bubble uses; nav_live and nav_tadbir are for comparison.
+    nav: float | None = None
     #: This month's portfolio composition weights (sekke/shemsh/cash/...)
     #: from live.last_month_gold_compos, if this fund has a row there.
     weights: dict[str, float] | None
@@ -115,10 +118,11 @@ class GoldSummary(BaseModel):
     #: Sums across the funds, IRR.
     total_value: float
     total_market_cap: float
-    #: Latest fund trade time, and whether it is recent enough (within 15
-    #: minutes of now, Tehran) to call the market open. An inference from
-    #: data freshness, not an official market status.
+    #: Latest fund trade time ("HH:MM:SS").
     last_trade_time: str | None
+    #: Whether the gold fund market is in session now, by schedule:
+    #: Saturday-Wednesday, 12:00-18:00 Tehran. Official holidays are not
+    #: known to Nexus.
     market_open: bool
 
 

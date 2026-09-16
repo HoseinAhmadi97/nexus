@@ -13,7 +13,7 @@ from app.routers import gold
 from app.schemas import GoldFundRow, GoldSeriesPoint, GoldSnapshot, GoldSummary
 from app.services import gold_market
 from app.services.gold_funds import _trade_time
-from app.services.gold_snapshot import TEHRAN, downsample, summarize
+from app.services.gold_snapshot import TEHRAN, downsample, fund_market_open, summarize
 from app.snapshot_cache import SnapshotCache
 
 NOW = dt.datetime(2026, 9, 16, 11, 0, tzinfo=TEHRAN)
@@ -139,7 +139,7 @@ def test_trade_time_formats_hhmmss_integers():
     assert _trade_time(None) is None
 
 
-def test_summary_stats_and_market_open():
+def test_summary_stats():
     funds = [
         _fund("a", -0.02, change_pct=0.01, trade_time="10:50:00"),
         _fund("b", 0.01, change_pct=0.03, trade_time="10:58:00"),
@@ -155,11 +155,20 @@ def test_summary_stats_and_market_open():
     assert summary.avg_change_pct == pytest.approx(0.02)
     assert summary.total_value == 200.0
     assert summary.last_trade_time == "10:58:00"
-    assert summary.market_open is True
 
 
-def test_market_is_closed_when_the_last_trade_is_stale():
-    assert summarize([_fund("a", 0.0, trade_time="09:30:00")], NOW).market_open is False
+@pytest.mark.parametrize("when, is_open", [
+    (dt.datetime(2026, 9, 16, 11, 59, tzinfo=TEHRAN), False),   # Wednesday, before 12:00
+    (dt.datetime(2026, 9, 16, 12, 0, tzinfo=TEHRAN), True),     # Wednesday, opening minute
+    (dt.datetime(2026, 9, 16, 17, 59, tzinfo=TEHRAN), True),
+    (dt.datetime(2026, 9, 16, 18, 0, tzinfo=TEHRAN), False),    # closes at 18:00
+    (dt.datetime(2026, 9, 12, 13, 0, tzinfo=TEHRAN), True),     # Saturday
+    (dt.datetime(2026, 9, 17, 13, 0, tzinfo=TEHRAN), False),    # Thursday
+    (dt.datetime(2026, 9, 18, 13, 0, tzinfo=TEHRAN), False),    # Friday
+])
+def test_fund_market_follows_the_saturday_to_wednesday_12_to_18_schedule(when, is_open):
+    assert fund_market_open(when) is is_open
+    assert summarize([_fund("a", 0.0)], when).market_open is is_open
 
 
 def test_downsample_keeps_first_and_last_point():

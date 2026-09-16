@@ -14,7 +14,8 @@ from app.services.gold_snapshot import TEHRAN
 #: NAV providers publish about once a minute; 5-minute buckets keep a
 #: full session (~9:00-15:30) under 80 points per fund.
 BUCKET_MINUTES = 5
-NAV_SOURCE = "tadbir"
+#: farabi is the NAV of record everywhere (see gold_funds.py).
+NAV_SOURCE = "farabi"
 
 # Every fund's NAV on the most recent day the source has data for.
 # hist.gold_fund_nav.time is naive Tehran time.

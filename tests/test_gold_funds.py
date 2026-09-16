@@ -85,19 +85,41 @@ async def test_build_gold_funds_table_filters_to_gold_funds_only():
 
 
 @pytest.mark.asyncio
-async def test_nominal_bubble_computed_from_live_last_trade_and_nav():
+async def test_nominal_bubble_uses_the_farabi_nav():
     redis_client = AsyncMock()
     redis_client.get.return_value = ALL_TICKERS_JSON
     pg_pool = AsyncMock()
     pg_pool.fetch.return_value = []
     atlas_provider = AsyncMock()
-    atlas_provider.latest_for.return_value = []
+    atlas_provider.latest_for.return_value = [
+        PricePoint(isin="IRTKMOFD0001", source="tadbir", price=636000.0, updated_at=NOW, payload={}),
+        PricePoint(isin="IRTKMOFD0001", source="farabi", price=636200.0, updated_at=NOW, payload={}),
+    ]
 
     rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
 
     row = rows[0]
-    assert row.nominal_bubble == pytest.approx((636685 / 636148.0) - 1)
+    assert row.nav == 636200.0
+    # farabi, not TSE's live NAV (636148) or tadbir (636000)
+    assert row.nominal_bubble == pytest.approx((636685 / 636200.0) - 1)
     assert row.weights is None  # no weights row matched
+
+
+@pytest.mark.asyncio
+async def test_no_farabi_nav_means_no_bubble_rather_than_another_source():
+    redis_client = AsyncMock()
+    redis_client.get.return_value = ALL_TICKERS_JSON
+    pg_pool = AsyncMock()
+    pg_pool.fetch.return_value = []
+    atlas_provider = AsyncMock()
+    atlas_provider.latest_for.return_value = [
+        PricePoint(isin="IRTKMOFD0001", source="tadbir", price=636000.0, updated_at=NOW, payload={}),
+    ]
+
+    rows = await build_gold_funds_table(redis_client, pg_pool, atlas_provider)
+
+    assert rows[0].nav is None
+    assert rows[0].nominal_bubble is None
 
 
 @pytest.mark.asyncio

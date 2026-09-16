@@ -19,8 +19,17 @@ TEHRAN = dt.timezone(dt.timedelta(hours=3, minutes=30))
 #: sparkline or a small chart, and it keeps the snapshot a few KB.
 MAX_SERIES_POINTS = 60
 
-#: A fund trade older than this means the market is not trading now.
-MARKET_OPEN_WINDOW = dt.timedelta(minutes=15)
+#: Gold fund trading session, given by the user (2026-09-16): Saturday to
+#: Wednesday, 12:00-18:00 Tehran. Python weekday(): Mon=0 ... Sat=5, Sun=6.
+FUND_SESSION_DAYS = frozenset({5, 6, 0, 1, 2})
+FUND_SESSION_OPEN = dt.time(12, 0)
+FUND_SESSION_CLOSE = dt.time(18, 0)
+
+
+def fund_market_open(now: dt.datetime) -> bool:
+    """By schedule, not data freshness. `now` must be Tehran-aware.
+    Official holidays aren't known here, so a holiday reads as open."""
+    return now.weekday() in FUND_SESSION_DAYS and FUND_SESSION_OPEN <= now.time() < FUND_SESSION_CLOSE
 
 # The most recent day that has data, not "today": outside trading hours
 # (and on holidays) a chart of the last session beats an empty one.
@@ -65,25 +74,12 @@ async def _read_series(pg_pool: asyncpg.Pool, sql: str, source: str, isin: str) 
     return downsample(points)
 
 
-def _parse_trade_time(text: str | None, now: dt.datetime) -> dt.datetime | None:
-    if not text:
-        return None
-    hour, minute, second = (int(x) for x in text.split(":"))
-    return now.replace(hour=hour, minute=minute, second=second, microsecond=0)
-
-
 def summarize(funds: list[GoldFundRow], now: dt.datetime) -> GoldSummary:
-    """`now` must be Tehran-aware; TSE trade times have no date, so they
-    are read as today's."""
+    """`now` must be Tehran-aware."""
     bubbles = [(f.symbol, f.nominal_bubble) for f in funds if f.nominal_bubble is not None]
     changes = [f.change_pct for f in funds if f.change_pct is not None]
     times = [f.trade_time for f in funds if f.trade_time]
     last_trade_time = max(times) if times else None
-    last_trade = _parse_trade_time(last_trade_time, now)
-    market_open = (
-        last_trade is not None
-        and dt.timedelta(minutes=-1) <= now - last_trade <= MARKET_OPEN_WINDOW
-    )
 
     hi = max(bubbles, key=lambda b: b[1]) if bubbles else None
     lo = min(bubbles, key=lambda b: b[1]) if bubbles else None
@@ -96,7 +92,7 @@ def summarize(funds: list[GoldFundRow], now: dt.datetime) -> GoldSummary:
         total_value=sum(f.value or 0 for f in funds),
         total_market_cap=sum(f.market_cap or 0 for f in funds),
         last_trade_time=last_trade_time,
-        market_open=market_open,
+        market_open=fund_market_open(now),
     )
 
 
@@ -124,13 +120,13 @@ async def build_gold_snapshot(
     sized = [f for f in funds if f.market_cap]
     if sized:
         featured = max(sized, key=lambda f: f.market_cap)
-        nav = await _read_series(pg_pool, _NAV_LAST_DAY_SQL, "tadbir", featured.isin)
+        nav = await _read_series(pg_pool, _NAV_LAST_DAY_SQL, "farabi", featured.isin)
         if nav:
             series["nav"] = GoldSeries(
                 key=featured.isin,
                 label=featured.symbol,
                 unit="IRR",
-                source="tadbir",
+                source="farabi",
                 points=nav,
             )
 

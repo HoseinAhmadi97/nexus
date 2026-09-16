@@ -117,10 +117,13 @@ async def build_gold_funds_table(
         nav_live = t.get("nav")
         tadbir_point = tadbir_by_isin.get(isin)
         farabi_point = farabi_by_isin.get(isin)
+        # farabi is the NAV of record (the user's choice, 2026-09-16): the
+        # bubble and every NAV the website shows use it. tadbir and TSE's
+        # live NAV stay in the row for comparison only. No fallback -- a
+        # missing farabi NAV gives no bubble rather than a mixed-source one.
+        nav = farabi_point.price if farabi_point else None
 
-        nominal_bubble = (
-            (last_trade / nav_live) - 1 if last_trade and nav_live else None
-        )
+        nominal_bubble = (last_trade / nav) - 1 if last_trade and nav else None
         # Day change is measured on the last trade, against TSE's own
         # previous-day reference price -- the same pair TSE's site uses.
         yesterday = t.get("yesterday_price")
@@ -143,9 +146,10 @@ async def build_gold_funds_table(
                 bid_price_1=t.get("bid_price_1"),
                 value=t.get("value"),
                 volume=t.get("volume"),
+                nav=nav,
                 nav_live=nav_live,
                 nav_tadbir=tadbir_point.price if tadbir_point else None,
-                nav_farabi=farabi_point.price if farabi_point else None,
+                nav_farabi=nav,
                 nominal_bubble=nominal_bubble,
                 weights=weights_by_fund.get(_COMPOS_FUND_NAME.get(symbol, symbol)),
             )

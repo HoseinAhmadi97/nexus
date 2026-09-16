@@ -88,7 +88,7 @@ contracts (a keyspace convention and a table schema), not its code.
 
 9. **The legacy pipeline's intrinsic/sekke/shemsh bubble decomposition
    is deliberately not ported.** Only `nominal_bubble`
-   (`last_trade/nav_live - 1`) is computed in `gold_funds.py` -- the
+   (`last_trade/nav - 1`, `nav` = farabi, see 15) is computed in `gold_funds.py` -- the
    fuller decomposition depends on unit assumptions (a "mesghal" price
    Atlas has no equivalent for, a specific dollar-rate convention) that
    haven't been validated against the new datasources. Don't add it
@@ -127,6 +127,18 @@ contracts (a keyspace convention and a table schema), not its code.
     intraday NAV (~10 KB), and NAV moves about once a minute. Folding
     it into the snapshot would make every page on the site download it
     every 20 s. Same serving rules as invariant 10.
+
+15. **farabi is the NAV of record** (the user's decision, 2026-09-16).
+    `GoldFundRow.nav`, `nominal_bubble`, the snapshot's `nav` series and
+    `/v1/gold/nav-trend` all use farabi. `nav_live` (TSE) and
+    `nav_tadbir` stay in fund rows for comparison only. There is no
+    fallback to another source when farabi is missing -- the bubble is
+    None instead, so a number never silently changes its source.
+
+16. **The gold fund market status is a schedule, not an inference:**
+    Saturday-Wednesday 12:00-18:00 Tehran (`fund_market_open()` in
+    `gold_snapshot.py`, given by the user 2026-09-16). Holidays are not
+    known to Nexus.
 
 ## Conventions
 
