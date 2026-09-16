@@ -48,8 +48,36 @@ def test_certificate_rows_get_intrinsic_bubble_and_implied_dollar():
     assert coin.bubble == pytest.approx(coin.price / coin.intrinsic - 1)
     assert coin.implied_dollar == pytest.approx(230100.0 * (1 + coin.bubble))
     assert bar.bubble == pytest.approx(bar.price / bar.intrinsic - 1)
-    assert set(bubbles) == {"govahi_sekke", "govahi_shemsh"}
-    assert gold18.intrinsic is None and gold18.bubble is None   # only certificates are valued
+    assert {"govahi_sekke", "govahi_shemsh", "geram18"} <= set(bubbles)
+    # an IRT row gets its intrinsic in toman: the legacy gold_18 formula / 10
+    mesghal_irr = 4343.0 * 230100.0 * 10 / 9.5742
+    assert gold18.intrinsic == pytest.approx(mesghal_irr / 4.6083 / 705 * 750 / 10)
+    assert gold18.bubble == pytest.approx(gold18.price / gold18.intrinsic - 1)
+
+
+def test_coins_mesghal_and_fractions_are_valued_in_their_own_unit():
+    rows = [
+        _row("ons", 4343.0, "USD"),
+        _row("dollar", 230100.0, "IRT"),
+        _row("sekee", 232_800_000.0, "IRT"),
+        _row("sekee_bahar", 230_500_000.0, "IRT"),
+        _row("nim", 118_900_000.0, "IRT"),
+        _row("rob", 62_600_000.0, "IRT"),
+        _row("mesghal", 101_800_000.0, "IRT"),
+        _row("govahi_sekke", 2_310_000_000.0, "IRR"),
+    ]
+    apply_certificate_intrinsics(rows)
+    m = {r.symbol: r for r in rows}
+
+    coin_irr = 4343.0 * 2_301_000.0 / 4.2492
+    assert m["sekee"].intrinsic == pytest.approx(coin_irr / 10)             # toman
+    assert m["govahi_sekke"].intrinsic == pytest.approx(coin_irr)           # rial, same coin
+    assert m["sekee_bahar"].intrinsic == pytest.approx(m["sekee"].intrinsic)
+    assert m["nim"].intrinsic == pytest.approx(m["sekee"].intrinsic / 2)
+    assert m["rob"].intrinsic == pytest.approx(m["sekee"].intrinsic / 4)
+    assert m["mesghal"].intrinsic == pytest.approx(4343.0 * 2_301_000.0 / 9.5742 / 10)
+    for r in rows[2:]:
+        assert r.implied_dollar == pytest.approx(230100.0 * (1 + r.bubble))
 
 
 def test_fund_intrinsic_bubble_is_the_weighted_certificate_bubbles():

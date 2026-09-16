@@ -150,6 +150,9 @@ contracts (a keyspace convention and a table schema), not its code.
     bubble). The constants (9.5742, 4.6083, 705/750, 4.2492, /10) are the
     legacy ones -- don't change them without the user. Consumers show these
     numbers; they don't recompute them.
+    Also valued with the same legacy formulas: geram18, geram24, mesghal and the
+    Emami coin. Bahar Azadi, half and quarter coins are not in the legacy code;
+    they are derived from the Emami coin (same gold: equal, 1/2, 1/4).
 
 ## Conventions
 
