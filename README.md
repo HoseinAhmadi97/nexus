@@ -115,6 +115,12 @@ TSE's previous-day price), `trade_time` and `market_cap`.
   `series` -- two intraday lines for the most recent day with data:
   `geram18` (estjt) and `nav` (tadbir NAV of the largest fund by market
   cap). See "Website snapshot" below.
+- `GET /v1/gold/nav-trend` -- every gold fund's intraday NAV (tadbir) for
+  the most recent day with data, on one shared 5-minute grid (`times`),
+  largest fund first; each fund has `nav` per bucket (carried forward,
+  `null` before its first NAV), `first`, `last` and `change_pct`. For the
+  gold dashboard's NAV chart; rebuilt every `NEXUS_NAV_TREND_REFRESH_SECONDS`
+  (default 60) with the same cache as the snapshot.
 
 ### Website snapshot
 

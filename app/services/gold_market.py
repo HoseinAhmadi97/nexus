@@ -17,8 +17,8 @@ from app.schemas import GoldMarketRow
 # which estjt/tabdeal don't cover but IME's GoldCoin/GoldBar contracts
 # are exactly).
 #
-# Added 2026-09-16 for the website's gold pages, pending the user's
-# confirmation: the smaller coins from estjt (same source as "sekee"),
+# Added 2026-09-16 for the website's gold pages, confirmed with the user
+# the same day: the smaller coins from estjt (same source as "sekee"),
 # and "mesghal" from tabdeal's gold_melt ("طلای آبشده", the melted-gold
 # price per mesghal -- it tracks geram18 x 4.3318 to within 0.3%). No
 # estjt equivalent exists for mesghal.

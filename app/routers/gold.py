@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
 
-from app.schemas import GoldFundRow, GoldMarketRow, GoldSnapshot
+from app.schemas import GoldFundRow, GoldMarketRow, GoldNavTrend, GoldSnapshot
 from app.services.gold_funds import build_gold_funds_table
 from app.services.gold_market import build_gold_market_table
 
@@ -28,7 +28,17 @@ async def get_gold_snapshot(request: Request) -> Response:
     """Market + funds + summary + intraday series in one document, for
     the website. Served from app.state.gold_snapshot (rebuilt on a timer
     in the background), never built per request -- see SnapshotCache."""
-    cache = request.app.state.gold_snapshot
+    return await _serve_cached(request, request.app.state.gold_snapshot)
+
+
+@router.get("/nav-trend", response_model=GoldNavTrend)
+async def get_gold_nav_trend(request: Request) -> Response:
+    """Every gold fund's intraday NAV on one time grid, for the website's
+    NAV chart. Served from app.state.gold_nav_trend, rebuilt on a timer."""
+    return await _serve_cached(request, request.app.state.gold_nav_trend)
+
+
+async def _serve_cached(request: Request, cache) -> Response:
     await cache.ensure()
 
     # Clients may reuse a response for part of one rebuild interval; the

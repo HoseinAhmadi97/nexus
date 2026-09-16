@@ -117,10 +117,16 @@ contracts (a keyspace convention and a table schema), not its code.
     rial/toman mix-up produces numbers that look plausible and are 10x
     off.
 
-13. **Instruments added 2026-09-16 still need the user's confirmation:**
-    `sekee_bahar`, `nim`, `rob`, `gerami` (estjt) and `mesghal`
-    (tabdeal `gold_melt`, which tracks geram18 x 4.3318 within 0.3%).
-    The original six plus dollar were confirmed on 2026-09-13.
+13. **Instrument sources are confirmed with the user; don't swap them
+    silently.** The original six plus dollar on 2026-09-13; `sekee_bahar`,
+    `nim`, `rob`, `gerami` (estjt) and `mesghal` (tabdeal `gold_melt`,
+    which tracks geram18 x 4.3318 within 0.3%) on 2026-09-16.
+
+14. **`/v1/gold/nav-trend` stays separate from the snapshot.** Every
+    page polls the snapshot; only the gold dashboard needs every fund's
+    intraday NAV (~10 KB), and NAV moves about once a minute. Folding
+    it into the snapshot would make every page on the site download it
+    every 20 s. Same serving rules as invariant 10.
 
 ## Conventions
 

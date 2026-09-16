@@ -122,6 +122,29 @@ class GoldSummary(BaseModel):
     market_open: bool
 
 
+class GoldNavTrendFund(BaseModel):
+    isin: str
+    symbol: str
+    #: NAV (IRR) per bucket of GoldNavTrend.times; None before the fund's
+    #: first NAV of the day.
+    nav: list[float | None]
+    first: float | None
+    last: float | None
+    #: last / first - 1, a fraction.
+    change_pct: float | None
+
+
+class GoldNavTrend(BaseModel):
+    """Every gold fund's intraday NAV on one shared time grid (the most
+    recent day with data), largest fund by market cap first."""
+
+    generated_at: dt.datetime
+    source: str
+    bucket_minutes: int
+    times: list[dt.datetime]
+    funds: list[GoldNavTrendFund]
+
+
 class GoldSnapshot(BaseModel):
     """Everything the website's gold pages show, in one document."""
 
