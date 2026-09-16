@@ -118,7 +118,8 @@ TSE's previous-day price), `trade_time` and `market_cap`.
 - `GET /v1/gold/nav-trend` -- every gold fund's intraday NAV (tadbir) for
   the most recent day with data, on one shared 5-minute grid (`times`),
   largest fund first; each fund has `nav` per bucket (carried forward,
-  `null` before its first NAV), `first`, `last` and `change_pct`. For the
+  `null` before its first NAV), `first`, `last`, `prev_close` (last NAV of
+  the previous day) and `change_pct` (vs `prev_close`, else vs `first`). For the
   gold dashboard's NAV chart; rebuilt every `NEXUS_NAV_TREND_REFRESH_SECONDS`
   (default 60) with the same cache as the snapshot.
 

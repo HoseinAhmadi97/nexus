@@ -130,7 +130,10 @@ class GoldNavTrendFund(BaseModel):
     nav: list[float | None]
     first: float | None
     last: float | None
-    #: last / first - 1, a fraction.
+    #: Last NAV before the trend's day (yesterday's close), if any in the
+    #: previous 10 days.
+    prev_close: float | None = None
+    #: last / prev_close - 1 (falls back to last / first - 1), a fraction.
     change_pct: float | None
 
 

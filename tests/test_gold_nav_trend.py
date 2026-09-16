@@ -44,6 +44,18 @@ def test_funds_share_one_grid_and_carry_nav_forward():
     assert trend.times[0].tzinfo == TEHRAN
 
 
+def test_change_is_measured_from_the_previous_close_when_there_is_one():
+    rows = [_row("A", 12, 0, 100), _row("A", 12, 5, 110), _row("B", 12, 0, 50), _row("B", 12, 5, 55)]
+
+    trend = nav_trend_from_rows([_fund("A", "a"), _fund("B", "b")], rows, NOW, {"A": 88})
+
+    a, b = trend.funds
+    assert a.prev_close == 88
+    assert a.change_pct == pytest.approx(110 / 88 - 1)   # vs yesterday, not vs 100
+    assert b.prev_close is None
+    assert b.change_pct == pytest.approx(55 / 50 - 1)    # no close: first NAV of the day
+
+
 def test_funds_without_nav_rows_are_left_out_and_order_is_kept():
     rows = [_row("B", 12, 0, 50), _row("A", 12, 0, 100)]
 
