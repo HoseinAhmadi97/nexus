@@ -19,6 +19,13 @@ TEHRAN = dt.timezone(dt.timedelta(hours=3, minutes=30))
 #: sparkline or a small chart, and it keeps the snapshot a few KB.
 MAX_SERIES_POINTS = 60
 
+#: (series key, Atlas source, isin, unit) of each tile sparkline.
+SPARKLINES = [
+    ("geram18", "estjt", "geram18", "IRT"),
+    ("dollar", "wallex", "USDTTMN", "IRT"),
+    ("ons", "estjt", "ons_tala", "USD"),
+]
+
 #: Gold fund trading session, given by the user (2026-09-16): Saturday to
 #: Wednesday, 12:00-18:00 Tehran. Python weekday(): Mon=0 ... Sat=5, Sun=6.
 FUND_SESSION_DAYS = frozenset({5, 6, 0, 1, 2})
@@ -109,11 +116,13 @@ async def build_gold_snapshot(
     funds = await build_gold_funds_table(redis_client, pg_pool, atlas_provider, market)
 
     series: dict[str, GoldSeries] = {}
-    geram18 = await _read_series(pg_pool, _ATLAS_LAST_DAY_SQL, "estjt", "geram18")
-    if geram18:
-        series["geram18"] = GoldSeries(
-            key="geram18", label=LABELS["geram18"], unit="IRT", source="estjt", points=geram18
-        )
+    # Last-day sparklines for the website's price tiles. The dollar line is
+    # wallex's USDT/Toman alone: the tile's price averages wallex and tabdeal,
+    # but a sparkline only needs the shape of the day.
+    for key, source, isin, unit in SPARKLINES:
+        points = await _read_series(pg_pool, _ATLAS_LAST_DAY_SQL, source, isin)
+        if points:
+            series[key] = GoldSeries(key=key, label=LABELS[key], unit=unit, source=source, points=points)
 
     # The featured NAV line is the largest fund by market cap, chosen from
     # the data rather than hard-coded, so it follows the market.
